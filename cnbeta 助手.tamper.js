@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           cnbeta 助手
-// @description    cnbeta 评论找回(月光宝盒和另外一个站) 文章收藏 快速评论和打分
+// @description    cnbeta 评论找回 文章收藏 快速评论和打分 页面优化 分享增强 
 // @include        http://cnbeta.com/articles/*
 // @include        http://www.cnbeta.com/articles/*
 // @include        http://cnbeta.com/
@@ -23,14 +23,13 @@
 (function()
  {
      "use strict";
-     // 调试开关
-     
+     //调试开关 总控所有输出
      function Log(s){
          var _LOG=false;
          if(_LOG)
          {console.log(s);}
      }
-     // 获取不安全的win
+     // 获取不安全的win 
      function MustGetUnsafeWin()
      {
          if(window.unsafeWindow){return window.unsafeWindow;}
@@ -53,22 +52,22 @@
      var 
      uWin=MustGetUnsafeWin(),
          
-         //文章信息
-         Article =
+     //文章信息
+     Article =
          {
+             // 语法糖,防止出现null
              id:parseInt((/[0-9]{4,6}/.exec(location.href))+'',10),
              title:$('#news_title').html(),
+             //取发布时间
              publish_date:(function(){
                  var author = $('.date');
                  if(author.length<1){return new Date();}
-                 
                  var t = /([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})/.exec(author.html());
-                 
                  return new Date(t[1],t[2]-1,t[3],t[4],t[5],t[6]);
              })()
          },
          // 评论相关函数
-         CB_comment=
+    CB_comment=
          {
              //定义常量
              GETTER_STYlE:'#yigle_net_yueguangbaohe{border-radius:5px;overflow:hidden;position:fixed;top:20px;right:50px;width:50px;height:50px;background:black;cursor:pointer;opacity:0.9;} #y_tips{position: fixed;bottom: 25px;right: 5px;width: 260px;padding: 6px;color: rgb(255, 255, 255);background-color: rgb(0, 0, 0);text-align: center;}'
@@ -76,13 +75,17 @@
              ' .commt_list .comment_body {padding-left:5px !important;} .commt_list .comment_body .re_mark{display:none;} span.datetime{cursor: pointer;}'+
              '.post_commt .textarea_wraper{display:inline;} .commt_sub{right: 100px;top: 1px;position:absolute !important;} #post_tips{top: 80px;} .commt_list dd {margin: 0px !important;}'+
              '.commt_list blockquote,.commt_list blockquote p.re_text{margin:0 0 0 10px !important;padding: 0px !important;} .pm{padding-left:10px;padding-right:10px}',
+
+             //按照月光宝盒定义
              BOX_ID:'yigle_net_yueguangbaohe',
+             // 提示显示时长
              TIP_TIME:4500,
              //定义元素
              boxEl:document.createElement('div'),
              moonEl:document.createElement('canvas'), 
+
              // 获取的数据
-             isShow:0,//控制评论显示的优先级
+             showLv:0,//控制评论显示的优先级
              isReq:false,
              // 其他
              isFirst:true,
@@ -139,7 +142,7 @@
                          window.setTimeout(function(){var x=document.getElementById('y_tips');x.parentNode.removeChild(x);},CB_comment.TIP_TIME-1000);
                      }
                      catch(e1)
-                     {console.debug(e1.message);}//sorry,no idea here..
+                     {Log(e1.message);}//sorry,no idea here..
                  }
                  Log('leave TipAdd');
              },
@@ -154,89 +157,88 @@
                      today = new Date(date.getFullYear(),date.getMonth(),date.getDate());
                  return ((date-publish_day)/(24*3600*1000)) >= 1;
              },
+             // 通过hook网页的代码来设置评论
+             // ifSql控制是否写到websql
+             setComment:function (data,ifSql)
+             {
+                 try{
+                     Log('start json parse');
+                     var ret,newdata;
+                     //  未还原的字符
+                     if(typeof data=='string'){
+                         //是新格式?
+                         newdata=data.match(/^okcb\d*\((.*)\)$/);
+                         //去掉头
+                         if(newdata)
+                             data=newdata[1];
+                         //还原
+                         ret=JSON.parse(data);
+                        }
+                     else //否则直接使用
+                         ret=data;
+                     //新格式要对结果base64
+                     if(typeof ret.result == 'string'){
+                         ret.result=JSON.parse(uWin.$.cbcode.de64(ret.result,true,8));
+                        }
+                     //是否有评论
+                     if(typeof ret.result.cmntstore ==='undefined' ||ret.result.cmntlist.length<1)return;
+                     //websql操作
+                     if(ifSql&&window.openDatabase)
+                        {
+                         var db=window.openDatabase('cbComment','1.0','For cb Helper',10*1024*1024);
+                         db.transaction(function (tx) {  
+                             tx.executeSql('CREATE TABLE IF NOT EXISTS cbdata (id unique, data)');
+                             var data=JSON.stringify(ret);
+                             tx.executeSql('select id,data from cbdata where id=?',[Article.id],function(tx,ts){
+                                 if(ts.rows.length<1)tx.executeSql('insert into cbdata (id, data) values(?,?)',[Article.id,data]);
+                                 else tx.executeSql('update cbdata set data=? where id=?',[data,Article.id]);
+                             });
+                         });
+                        }
+                     //hook并实现评论显示
+                     uWin.GV.COMMENTS.CMNTDICT=ret.result.cmntdict;
+                     uWin.GV.COMMENTS.CMNTLIST=ret.result.cmntlist;
+                     uWin.GV.COMMENTS.HOTLIST=ret.result.hotlist;
+                     uWin.GV.COMMENTS.CMNTSTORE=ret.result.cmntstore;
+                     uWin.GV.COMMENTS.SHOWNUM=ret.result.cmntlist.length;
+                     uWin.GV.COMMENTS.MORENUM=100;
+                     uWin.GV.COMMENTS.MOREPAGE=1;
+                     uWin.GV.COMMENTS.PAGE=1;
+                     // 拓展变量作用域
+                     var genList,genHotList,_hook,self,loadCmt,cmtList,lastT,more,
+                         initData,bindAction,fixed_top;
+                     var GV=uWin.GV;
+                     var CB=uWin.CB;
+                     Log('eval begin');
+                     // 去掉函数调用以及声明
+                     eval('_hook='+uWin.$.cmtOnload.toString().replace('initData(1)','').replace(/var/g,''));
+                     Log('_hook start');
+                     _hook('.commt_list');
+                     $("#comment_num").html(ret.result.comment_num);
+                     $("#view_num").html(ret.result.view_num);
+                     $(".post_count").html('共有<em>'+ret.result.comment_num+'</em>条评论，显示<em>'+ret.result.join_num+'</em>条').fadeIn();
+                     uWin.initData=initData;
+                     uWin.genList=genList;
+                     genList();
+                     Log('genHotList start');
+                     $("#J_hotcommt_list").parent().show();
+                     genHotList();
+                     bindAction();
+                 }
+                 catch(e)
+                 {Log(e.message);}
+             },
              // 获取内容
              GetContent :function()
              {
                  Log('enter GetContent');
+                 // 文章id
                  var id=Article.id,
+                        //2个停用的源
                      //  yg_url = 'http://yueguang.sinaapp.com/?id=' + id,
                      // iz_url = 'http://py.imorz.tk/tools/cb/hotcomment/'+id,
                      my_url = 'http://arm.itkso.com/php/cb.php?sid='+id,
                      offical_url = 'http://api.cnbeta.com/capi/phone/comment?article=' +id;
-                 //通过hook网页的代码来设置评论
-                 function setComment(data,ifSql)
-                 {
-                     try{
-                         Log('start json parse');
-                         var ret,newdata;
-                         //  未还原的字符
-                         if(typeof data=='string'){
-                             //是新格式?
-                             newdata=data.match(/^okcb\d*\((.*)\)$/);
-                             //去掉头
-                             if(newdata)
-                                 data=newdata[1];
-                             //还原
-                             ret=JSON.parse(data);
-                         }
-                         else //否则直接使用
-                             ret=data;
-                         //新格式要对结果base64
-                         if(typeof ret.result == 'string'){
-                             ret.result=JSON.parse(uWin.$.cbcode.de64(ret.result,true,8));
-                         }
-                         //是否有评论
-                         if(typeof ret.result.cmntstore ==='undefined' ||ret.result.cmntlist.length<1)return;
-                         //websql操作
-                         if(ifSql&&window.openDatabase)
-                         {
-                             var db=window.openDatabase('cbComment','1.0','For cb Helper',10*1024*1024);
-                             db.transaction(function (tx) {  
-                                 tx.executeSql('CREATE TABLE IF NOT EXISTS cbdata (id unique, data)');
-                                 var data=JSON.stringify(ret);
-                                 tx.executeSql('select id,data from cbdata where id=?',[Article.id],function(tx,ts){
-                                     if(ts.rows.length<1)tx.executeSql('insert into cbdata (id, data) values(?,?)',[Article.id,data]);
-                                     else tx.executeSql('update cbdata set data=? where id=?',[data,Article.id]);
-                                 });
-                             });
-                         }
-                         //hook并实现评论显示
-                         uWin.GV.COMMENTS.CMNTDICT=ret.result.cmntdict;
-                         uWin.GV.COMMENTS.CMNTLIST=ret.result.cmntlist;
-                         uWin.GV.COMMENTS.HOTLIST=ret.result.hotlist;
-                         uWin.GV.COMMENTS.CMNTSTORE=ret.result.cmntstore;
-                         uWin.GV.COMMENTS.SHOWNUM=ret.result.cmntlist.length;
-                         uWin.GV.COMMENTS.MORENUM=100;
-                         uWin.GV.COMMENTS.MOREPAGE=1;
-                         uWin.GV.COMMENTS.PAGE=1;
-                         // 拓展变量作用域
-                         var genList,genHotList,_hook,self,loadCmt,cmtList,lastT,more,
-                             initData,bindAction,fixed_top,bindAction;
-                         var GV=uWin.GV;
-                         var CB=uWin.CB;
-                         Log('eval begin');
-                         // 去掉函数调用以及声明
-                         eval('_hook='+uWin.$.cmtOnload.toString().replace('initData(1)','').replace(/var/g,''));
-                         Log('_hook start');
-                         _hook('.commt_list');
-                         $("#comment_num").html(ret.result.comment_num);
-                         $("#view_num").html(ret.result.view_num);
-                         $(".post_count").html('共有<em>'+ret.result.comment_num+'</em>条评论，显示<em>'+ret.result.join_num+'</em>条').fadeIn();
-                         Log('genList start');
-                         Log(ret);
-                         uWin.initData=initData;
-                         uWin.genList=genList;
-                         genList();
-                         Log('genHotList start');
-                         $("#J_hotcommt_list").parent().show();
-                         genHotList();
-                         bindAction();
-                         //最高等级
-                         CB_comment.isShow=3;
-                     }
-                     catch(e)
-                     {Log(e.message);}
-                 }
                  //从个人服务器获取数据
                  function fetchMyUrl()
                  {
@@ -249,8 +251,8 @@
                              var data=response.responseText;
                              if( data.length>1)
                              {
-                                 setComment(data,true);
-                                 CB_comment.isShow=4;
+                                 CB_comment.setComment(data,true);
+                                 CB_comment.showLv=4;
                                  CB_comment.TipAdd('个人服务器获取数据成功');
                              }
                              else
@@ -268,31 +270,37 @@
                          method: "GET",
                          url:offical_url,
                          onload: function(response) {
-                             if(CB_comment.isShow>3)return;
+                             if(CB_comment.showLv>3)return;
                              CB_comment.iz_Req=true;
-                             var data=response.responseText;
-                             if( data.length>1)
+                             var data=JSON.parse(response.responseText);
+                             // 官方手机api返回数组型,需转成需要的形式
+                             if( data.length>0)
                              {
                                  var newdata={u:[],cmntdict:{},hotlist:[]},lis=[],sto={};
-                                 JSON.parse(data).forEach(function(i)
-                                                          {
-                                                              sto[i.tid]={tid:i.tid,name:'CB官方API',comment:i.comment,reason:i.against,date:i.date,score:i.support,host_name:'里世界'};
-                                                              lis.push({tid:i.tid,parent:''});
-                                                          }
-                                                         );
+                                 data.forEach(function(i)
+                                     {
+                                      sto[i.tid]={tid:i.tid,
+                                      name:'CB官方API',//用户名
+                                      comment:i.comment,
+                                      reason:i.against,
+                                      date:i.date,
+                                      score:i.support,
+                                      host_name:'里世界'//ip
+                                     };
+                                      lis.push({tid:i.tid,parent:''});
+                                     });
                                  newdata.cmntlist=lis;
                                  newdata.cmntstore=sto;
                                  newdata.comment_num=newdata.join_num=lis.length;
                                  Log(newdata);
-                                 setComment({result:newdata},false);
-                                 CB_comment.isShow=3;
+                                 CB_comment.setComment({result:newdata},false);
+                                 CB_comment.showLv=3;
                                  CB_comment.TipAdd('官方手机API获取数据成功');
                              }
                              else
                              {
                                  CB_comment.TipAdd('官方手机API未得到数据');
                              }
-                             
                          }
                      });
                  }
@@ -311,15 +319,15 @@
                              if(ts.rows.length<1)
                              {fetchData();}
                              else 
-                             {setComment(ts.rows.item(0).data,false);}
+                             {CB_comment.setComment(ts.rows.item(0).data,false);}
                          });
                      });
                  }
                  else 
                  {
                      fetchData();
-                     //
                  }
+                 //以下两个源弃用
                  /* //月光宝盒获取 切分后分开加到评论和热门
                  GM_xmlhttpRequest({
                      method: "GET",
@@ -370,13 +378,11 @@
              // 显示
              ShowContent:function()
              {
-                 Log('enter ShowContent');
                  if(!this.isReq)
                  {
                      this.isReq=true;
                      this.GetContent();
                  }
-                 Log('leave ShowContent');
              },
              //添加移动站内容
              AddMobileComment:function()
@@ -389,15 +395,13 @@
                          CB_comment.iz_Req=true;
                          var data=response.response;
                          //Log(data);
-                         if (CB_comment.isShow<1)
-                         {
+                         if (CB_comment.showLv<1)
+                             {
                              Log($(data).filter('.content'));
                              $('#J_commt_list').html($($(data).filter('.content')));
-                             CB_comment.isShow=1;
-                         }
-                         
-                         CB_comment.TipAdd('移动站数据抓取成功');
-                         
+                             CB_comment.showLv=1;
+                             }
+                         CB_comment.TipAdd('移动站数据抓取成功'); 
                      }
                  });
              },
@@ -406,34 +410,33 @@
              {
                  // 没过期不显示
                  Log('enter init_Comment');
-                 //优化评论,不要那么的多
+                 //优化评论,不要那么的多 在DOM变动的时候处理
                  $('.commt_list').on('DOMNodeInserted',
-                                     function(e)
-                                     {
-                                         if(e.target.nodeName!='DL')return true;
-                                         $(e.target).find('.datetime').html('<span ref="p" class="pm">+1</span><span ref="m" class="pm">-1</span>点击出现支持反对');
-                                         return true;
-                                     }
-                                    );
+                   function(e)
+                   {
+                       if(e.target.nodeName!='DL')return true;
+                       $(e.target).find('.datetime').html('<span ref="p" class="pm">+1</span><span ref="m" class="pm">-1</span>点击出现支持反对');
+                       return true;
+                   });
+                 // 处理上面添加的按钮的事件 通过冒泡想上一级发送
                  $('#J_commt_list dl').live('click',function(e1)
-                                            {
-                                                if(e1.target.className=='datetime')
-                                                {
-                                                    $(this).find('.re_mark').show();
-                                                    return false;
-                                                }
-                                                else if(e1.target.className=='pm')
-                                                {
-                                                    var pm=$(e1.target).attr('ref'),
-                                                        node='.comment_body>.re_mark a[action-type=against]';
-                                                    if(pm=='p')
-                                                        node= '.comment_body>.re_mark a[action-type=support]';
-                                                    uWin.jQuery(this).find(node).click();
-                                                    if(pm=='p')CB_comment.TipAdd('支持了一下');
-                                                    else CB_comment.TipAdd('反对了一下');
-                                                }
-                                                    }
-                                           );
+                     {
+                        if(e1.target.className=='datetime')
+                        {
+                            $(this).find('.re_mark').show();
+                            return false;
+                        }
+                        else if(e1.target.className=='pm')
+                        {
+                            var pm=$(e1.target).attr('ref'),
+                            node='.comment_body>.re_mark a[action-type=against]';
+                            if(pm=='p')
+                                node= '.comment_body>.re_mark a[action-type=support]';
+                            uWin.jQuery(this).find(node).click();
+                            if(pm=='p')CB_comment.TipAdd('支持了一下');
+                            else CB_comment.TipAdd('反对了一下');
+                        }
+                    });
                  //按照月光宝盒的要求写入
                  this.boxEl.id = this.BOX_ID;
                  $(this.boxEl).append(this.moonEl);
@@ -445,35 +448,36 @@
                  {
                      this.draw_a_moon(false);
                      $(this.moonEl).click(function()
-                                          {
-                                              CB_comment.AddMobileComment();
-                                              return false;
-                                          }
-                                         );
+                      {
+                          CB_comment.AddMobileComment();
+                          return false;
+                      });
                      return;
                  }
                  this.draw_a_moon(Auto);
                  //自动的话显示评论
                  if(Auto)
                      this.ShowContent();
+                 //右键转为自动模式,左键显示过期评论
                  $(this.moonEl).mousedown(function(e)
-                                          { 
-                                              if(e.which==3)
-                                              {
-                                                  var status=($(this).attr('auto')=='false');
-                                                  CB_comment.draw_a_moon(status);
-                                                  $(this).attr('auto',status);
-                                              }
-                                              CB_comment.ShowContent();
-                                              return false;
-                                          }
-                                         );
+                 { 
+                  if(e.which==3)
+                    {
+                      var status=($(this).attr('auto')=='false');
+                      CB_comment.draw_a_moon(status);
+                      $(this).attr('auto',status);
+                    }
+                  CB_comment.ShowContent();
+                  return false;
+                 });
+                 // 取消默认右键打开上下文菜单
                  $(this.moonEl).bind('contextmenu',function(e){
                      return false;
                  });
                  Log('leave init_Comment');
              }// function init_Comment
          },// var CB_comment
+
          CB_Widget={
              //总元素
              widgetEl:$('<div/>'),
@@ -524,315 +528,327 @@
              
          },
          init:function()
-     {
-         this.init_widget();
-         this.init_Favs();
-         this.init_mark();
-         this.init_comment(); 
-         this.init_move();
-         //提示
-         $('.Widgets').not('#show_fav').tipsy({gravity: 'w'});
-         $("#go_home").click(function(){location.replace('/');});
-     },
+         {
+             this.init_widget();
+             this.init_Favs();
+             this.init_mark();
+             this.init_comment(); 
+             this.init_move();
+             //提示
+             $('.Widgets').not('#show_fav').tipsy({gravity: 'w'});
+             $("#go_home").click(function(){location.replace('/');});
+         },
          //初始化移动
          init_move:function()
-     {
-         //点击的话直接还原,向外边提供函数
-         uWin.resetOffset=function(){GM_setValue('DivX',50);GM_setValue('DivY',100);};
-         $('#MoveMe').click(function()
-                            {
-                                Log('MoveMe click');
-                                if(CB_Widget.isDivMove)
-                                {CB_Widget.isDivMove=false;return false;}
-                                CB_Widget.Div_X=50;
-                                CB_Widget.Div_Y=100;
-                                $(CB_Widget.widgetEl).css({'top':CB_Widget.Div_Y,'left':CB_Widget.Div_X});
-                                
-                            }
-                           );
-         var offSetY=0;
-         //处理移动 开始移动
-         $('#MoveMe').mousedown(function(e)
-                                {
-                                    offSetY=e.clientY-CB_Widget.Div_Y;
-                                    Log('clientY:' + e.clientY +',Div_Y:'+CB_Widget.Div_Y + ',y:'+offSetY);
-                                    CB_Widget.isStartDrag=true;
-                                    return true;
-                                });
-         // 移动结束,回写
-         function _x(e)
          {
-             Log('enter mouseleave or mouseup');
-             if(CB_Widget.isStartDrag){
-                 CB_Widget.isStartDrag=false;
-                 GM_setValue('DivX',CB_Widget.Div_X);
-                 GM_setValue('DivY',CB_Widget.Div_Y);
+             //点击的话直接还原,向外边提供函数
+             uWin.resetOffset=function(){GM_setValue('DivX',50);GM_setValue('DivY',100);};
+             //单击还原
+             $('#MoveMe').click(function()
+             {
+                if(CB_Widget.isDivMove)
+                    {CB_Widget.isDivMove=false;return false;}
+                CB_Widget.Div_X=50;
+                CB_Widget.Div_Y=100;
+                $(CB_Widget.widgetEl).css({'top':CB_Widget.Div_Y,'left':CB_Widget.Div_X});
+
+            });
+             var offSetY=0;
+             //处理移动 开始移动
+             $('#MoveMe').mousedown(function(e)
+             {
+                offSetY=e.clientY-CB_Widget.Div_Y;
+                Log('clientY:' + e.clientY +',Div_Y:'+CB_Widget.Div_Y + ',y:'+offSetY);
+                CB_Widget.isStartDrag=true;
+                return true;
+            });
+             // 移动结束,回写
+             function _x(e)
+             {
+                 Log('enter mouseleave or mouseup');
+                 if(CB_Widget.isStartDrag){
+                     CB_Widget.isStartDrag=false;
+                     GM_setValue('DivX',CB_Widget.Div_X);
+                     GM_setValue('DivY',CB_Widget.Div_Y);
+                 }
+                 return true;
              }
-             return true;
-         }
-         $('#MoveMe').mouseup(_x);
-         $('#MoveMe').mouseleave(_x);
-         // 移动中
-         $('#MoveMe').mousemove(function(e)
-                                {
-                                    //Log('enter mousemove');
-                                    if(!CB_Widget.isStartDrag)return true;
-                                    CB_Widget.isDivMove=true;
-                                    CB_Widget.Div_X=e.clientX-15;
-                                    CB_Widget.Div_Y=e.clientY-offSetY;
-                                    //Log("y:"+CB_Widget.Div_Y);
-                                    $(CB_Widget.widgetEl).css('top',CB_Widget.Div_Y).css('left',CB_Widget.Div_X);
-                                    return true;
-                                });
-     },
+             $('#MoveMe').mouseup(_x);
+             $('#MoveMe').mouseleave(_x);
+             // 移动中
+             $('#MoveMe').mousemove(function(e)
+            {
+                //Log('enter mousemove');
+                if(!CB_Widget.isStartDrag)return true;
+                CB_Widget.isDivMove=true;
+                CB_Widget.Div_X=e.clientX-15;
+                CB_Widget.Div_Y=e.clientY-offSetY;
+                //Log("y:"+CB_Widget.Div_Y);
+                $(CB_Widget.widgetEl).css('top',CB_Widget.Div_Y).css('left',CB_Widget.Div_X);
+                return true;
+            });
+        },
          // 初始化评论按钮
          init_comment:function()
-     {
-         // 评论框在指针到达时开始显示
-         $('#quick_comment').mouseover(function(){
-             $(CB_Widget.sideEl).css('top',CB_Widget.Div_Y).css('left',CB_Widget.Div_X+40);
-             CB_Widget.sideEl.show();
-             $('#comment_text1').focus();
-         }).click(function(){
-             // 跳转到评论处
-             location.href='#top_reply_logout';
-         }
-                 );
-         // 键盘和鼠标关掉评论框
-         $('body').keydown(function(e){
-             if(e.which==27)
-                 CB_Widget.sideEl.hide();
-             return true;
-         });
-         $('body').mousedown(function(e){
-             if(e.which==1)
-                 CB_Widget.sideEl.hide();
-             return true;
-         });
-         // 刷新验证码
-         function _imgload()
-         {
-             $.ajax({
-                 url: "\/captcha.htm?refresh=1",
-                 dataType: 'json',
-                 cache: false,
-                 success: function(data) {
-                     $('#safecode1').attr('src', data.url);
-                     $('body').data('captcha.hash', [data.hash1, data.hash2]);
-                 }
+        {
+             // 评论框在指针到达时开始显示
+             $('#quick_comment').mouseover(
+                function(){
+                 $(CB_Widget.sideEl).css('top',CB_Widget.Div_Y).css('left',CB_Widget.Div_X+40);
+                 CB_Widget.sideEl.show();
+                 $('#comment_text1').focus();
+             }).click(function(){
+                 // 跳转到评论处
+                 location.href='#top_reply_logout';
              });
-             return false;
-         }
-         $('#safecode1').click(_imgload);
-         // 处理回车显示验证码发送
-         $('#comment_text1').keydown(function(e){
-             switch(e.which)
-             { case 13:
-                     //uWin.reloadcode(1);
-                     _imgload();
-                     $('#vcode1').show();
-                     $('#vcode1').focus();
-                     break;
-                 case 27:
+             // 键盘和鼠标关掉评论框
+             $('body').keydown(function(e){
+                 if(e.which==27)
                      CB_Widget.sideEl.hide();
-                     break;
-                 default:
-                     return true;
-             }
-             return false;
-         });
-         //发送评论
-         $('#vcode1').keydown(function(e){
-             if(e.which==13)
+                 return true;
+             });
+             $('body').mousedown(function(e){
+                 if(e.which==1)
+                     CB_Widget.sideEl.hide();
+                 return true;
+             });
+             // 刷新验证码
+             function _imgload()
              {
-                 var id = Article.id;
-                 //把 内容写到对应位置,发送
-                 $('.form_input').attr('value',$(this).attr('value'));
-                 $('textarea[name="nowcomment"]').attr('value',$('#comment_text1').attr('value'));
-                 $('#post_btn').click();
-                 CB_comment.TipAdd('快速评论ing！！');
-                 CB_Widget.sideEl.hide();
+                 $.ajax({
+                     url: "\/captcha.htm?refresh=1",
+                     dataType: 'json',
+                     cache: false,
+                     success: function(data) {
+                         $('#safecode1').attr('src', data.url);
+                         $('body').data('captcha.hash', [data.hash1, data.hash2]);
+                     }
+                 });
                  return false;
              }
-             else return true;
-         });
-     },
+             $('#safecode1').click(_imgload);
+             // 处理回车显示验证码发送
+             $('#comment_text1').keydown(function(e){
+                 switch(e.which)
+                 { case 13:
+                         //uWin.reloadcode(1);
+                         _imgload();
+                         $('#vcode1').show();
+                         $('#vcode1').focus();
+                         break;
+                     case 27:
+                         CB_Widget.sideEl.hide();
+                         break;
+                     default:
+                         return true;
+                 }
+                 return false;
+             });
+             //发送评论
+             $('#vcode1').keydown(function(e){
+                 if(e.which==13)
+                 {
+                     var id = Article.id;
+                     //把 内容写到对应位置,发送
+                     $('.form_input').attr('value',$(this).attr('value'));
+                     $('textarea[name="nowcomment"]').attr('value',$('#comment_text1').attr('value'));
+                     $('#post_btn').click();
+                     CB_comment.TipAdd('快速评论ing！！');
+                     CB_Widget.sideEl.hide();
+                     return false;
+                 }
+                 else return true;
+             });
+        },
          // 打分
          init_mark:function()
-     {
-         $('#P5').click(function(){
-             $('li[data-score=5]').click();
-             CB_comment.TipAdd('5打分OK！！');
-         });
-         $('#N5').click(function(){
-             $('li[data-score=-5]').click();
-             CB_comment.TipAdd('-5打分OK！！');
-         });
-     },
+        {
+             $('#P5').click(function(){
+                 $('li[data-score=5]').click();
+                 CB_comment.TipAdd('5打分OK！！');
+             });
+             $('#N5').click(function(){
+                 $('li[data-score=-5]').click();
+                 CB_comment.TipAdd('-5打分OK！！');
+             });
+        },
          init_Favs:function()
-     {
-         //收藏,从设置中获取
-         this.favs=GM_getValue('favs','[]');
-         if(this.favs =='undefined')this.favs=[];
-         else
-             try{
-                 this.favs=JSON.parse(this.favs);
-             }
-         catch(e)
-         {this.favs=[];}
-         // 添加到收藏
-         $('#add_fav').click(function(){
-             Log('click add_fav');
-             if(CB_Widget.isDivMove)
-             {CB_Widget.isDivMove=false;return false;}
-             CB_Widget.sideEl.hide();
-             var id = Article.id;
-             //判断是否已存在
-             if((CB_Widget.favs.join(',')+',').indexOf(id+',')>-1)
-             {
-                 CB_comment.TipAdd('文章id:'+id+'已收藏!');
-                 return false;
-             }
-             //否则添加
-             CB_comment.TipAdd('收藏文章id'+id+'成功!');
-             CB_Widget.favs.push([id,Article.title]);
-             GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-         });
-         // 点击的话关闭
-         $('#show_fav').click(function(){
-             CB_Widget.sideEl.hide();
-             CB_Widget.showFav=!CB_Widget.showFav;
-             $('#show_fav').tipsy(CB_Widget.showFav?'show':'hide');
-         });
-         $('#show_fav').mouseover(function(){
-             $('#show_fav a').tipsy('show');
-         });
-         $('#show_fav').mouseout(function(){
-             $('#show_fav a').tipsy('hide');
-         });
-         
-         $('#show_fav a').tipsy({gravity: 'w'});
-         $('#show_fav').tipsy({gravity: 'w',html:true,trigger: 'manual',title:function(){
-             var s='';
-             for (var i in CB_Widget.favs)
-                 s+='<dd><div class="art_title" onclick="location.href=\'/articles/'+CB_Widget.favs[i][0]+'.htm\';" >'+ CB_Widget.favs[i][1]+'</div><strong class="del" refid="'+CB_Widget.favs[i][0]+'" >X</strong>';
-             return s;
-         }});
-         //删除
-         $('.del').live('click',function()
-                        {
-                            for(var  i in CB_Widget.favs)
-                                if( CB_Widget.favs[i][0].toString() == $(this).attr('refid'))
-                                {
-                                    CB_comment.TipAdd('删除收藏文章id'+CB_Widget.favs[i][0]+'成功!');
-                                    CB_Widget.favs.splice(i,1);
-                                    GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                    $('#show_fav').tipsy('hide');
-                                    break;
-                                }
-                                });
-     }
- },
- HomePage={
- CSS:'.alllist .realtime_list{padding:0;}.alllist .realtime_list .update_time{right:10px !important;} .hate{opacity: .2;} .listtop{padding: 4px 6px;cursor: pointer;}'+
- '.realtime_list dt{width:100% !important} .CBset{margin-top:10px;padding:4px 0 0 10px !important;} #CBSwitch input[type=checkbox]{margin-left:8px;}',
- isOrig:false,
- isChange:false,
- OpenNew:false,
- hateTopic:'小米',
- filter:function()
-{
-    if(HomePage.hateTopic=='')return;
-    var reg=new RegExp(HomePage.hateTopic);
-    $('.alllist dl').each(function(){var x=$(this);if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');});
-    $('#allnews_all .items_area').on('DOMNodeInserted',
-                                     function(e)
-                                     {
-                                         if(e.target.nodeName!='DL')return true;
-                                         var x=$(e.target);
-                                         if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');
-                                     });
-},
-    setting:function()
-{
-    this.hateTopic=GM_getValue('hateTopic','小米');
-    $('<li/>').addClass('tab_item').html('<a class="two">设置</a>').appendTo($('.cb_box:last nav ul'));
-    var s='<p class="notice CBset" >文章标题过滤:多个关键词用|隔开<br/>'+
-        '<input id="filterIn" style="width:150px" type="text" placeholder="多个关键词用|隔开" /><button id="filterOk">保存</button></p>'+
-        '<p class="notice CBset" id="CBSwitch">开关<br/>'+
-        '<input type="checkbox" name="global" />全局<input type="checkbox" name="share" />分享</p>';
-    var a=$('<div/>').attr('id','side_set').hide().appendTo($('.side_news_list'));
-    a.html(s);
-    a.find(':checkbox').click(function(){GM_setValue($(this).attr('name'),this.checked);}).each(
-        function(){if(GM_getValue($(this).attr('name'),true))$(this).attr('checked','true');});
-    $('#filterIn').val(this.hateTopic);
-    $('#filterOk').click(
-        function()
-        {
-            GM_setValue('hateTopic',$('#filterIn').val());
-            alert('设置成功,刷新生效');
-        }
-    );
-    function set(){uWin.jQuery('.side_news_nav').tabs('.side_news_list>div',{event:'mouseover'});};
-    uWin.setTimeout(set,1000);
-    $('#setting').click(set);
-},
-    init:function()
-{
-    this.OpenNew=GM_getValue('OpenNew',false);
-    this.isOrig=GM_getValue('org',false);
-    
-    //恢复官方样式
-    var Original_Style=function()
-    {
-        if(!HomePage.isChange)return;
-        $('.realtime').parent().find(':first').before($('.hotpush'));
-        $('.main_content_left > section').show();
-        $('.content_body .realtime').append($('.realtime_list'));
-    };
-    //精简样式
-    var New_Style=function(){
-        HomePage.isChange=true;
-        $('#allnews_all .items_area :first').before($('.realtime_list'));
-        $('.realtime_list').before($('.hotpush'));
-        $('.main_content_left > section').not(':last').hide();
-    };
-    var do_change=function()
-    {
-        if(HomePage.isOrig)
-        {
-            Original_Style();
-            $('#Back').html('改');
-            $('#Back').attr('title','修改');
-        }
-        else{New_Style();
-             $('#Back').html('原');
-             $('#Back').attr('title','恢复');
+         {
+             //收藏,从设置中获取
+             this.favs=GM_getValue('favs','[]');
+             if(this.favs =='undefined')this.favs=[];
+             else{
+                 try{this.favs=JSON.parse(this.favs);}
+             catch(e)
+             {this.favs=[];}
             }
-    };
-    do_change();
-    $('.allinfo .blue_bar').append($('.J_realtime').clone());
-    var s='<span id="setting" class="fr listtop">设置</span>'+
-        '<span class="fr listtop"><input type="checkbox" id="OpenNew" '+(this.OpenNew?'checked="true"':'')+ ' />新</span>';
-    $('.allinfo .blue_bar').append(s);
-    function target(){if(HomePage.OpenNew)
-        $('a[target="_blank"]').attr('target','');else $('a[target=""]').attr('target','_blank');HomePage.OpenNew=!HomePage.OpenNew;GM_setValue('OpenNew',HomePage.OpenNew);}                                               
-    $('#OpenNew').click(target);
-    this.OpenNew=!this.OpenNew;
-    target();
-    $('#widgetDiv > *').not('#show_fav').not('#MoveMe').not('#Back').remove();
-    $('#Back').click(
-        function()
+             // 添加到收藏
+             $('#add_fav').click(function(){
+                 Log('click add_fav');
+                 if(CB_Widget.isDivMove)
+                 {CB_Widget.isDivMove=false;return false;}
+                 CB_Widget.sideEl.hide();
+                 var id = Article.id;
+                 //判断是否已存在
+                 if((CB_Widget.favs.join(',')+',').indexOf(id+',')>-1)
+                 {
+                     CB_comment.TipAdd('文章id:'+id+'已收藏!');
+                     return false;
+                 }
+                 //否则添加
+                 CB_comment.TipAdd('收藏文章id'+id+'成功!');
+                 CB_Widget.favs.push([id,Article.title]);
+                 GM_setValue('favs',JSON.stringify(CB_Widget.favs));
+             });
+             // 点击的话关闭
+             $('#show_fav').click(function(){
+                 CB_Widget.sideEl.hide();
+                 CB_Widget.showFav=!CB_Widget.showFav;
+                 $('#show_fav').tipsy(CB_Widget.showFav?'show':'hide');
+             });
+             //控制显示和关闭
+             $('#show_fav').mouseover(function(){
+                 $('#show_fav a').tipsy('show');
+             });
+             $('#show_fav').mouseout(function(){
+                 $('#show_fav a').tipsy('hide');
+             });
+             //显示列表
+             $('#show_fav a').tipsy({gravity: 'w'});
+             $('#show_fav').tipsy({gravity: 'w',html:true,trigger: 'manual',title:function(){
+                 var s='';
+                 for (var i in CB_Widget.favs)
+                     s+='<dd><div class="art_title" onclick="location.href=\'/articles/'+CB_Widget.favs[i][0]+'.htm\';" >'+ CB_Widget.favs[i][1]+'</div><strong class="del" refid="'+CB_Widget.favs[i][0]+'" >X</strong>';
+                 return s;
+             }});
+             //删除
+             $('.del').live('click',function()
+             {
+                for(var  i in CB_Widget.favs)
+                    if( CB_Widget.favs[i][0].toString() == $(this).attr('refid'))
+                    {
+                        CB_comment.TipAdd('删除收藏文章id'+CB_Widget.favs[i][0]+'成功!');
+                        CB_Widget.favs.splice(i,1);
+                        GM_setValue('favs',JSON.stringify(CB_Widget.favs));
+                        $('#show_fav').tipsy('hide');
+                        break;
+                    }
+                });
+         }
+     },//CB_Widget
+     HomePage={
+        CSS:'.alllist .realtime_list{padding:0;}.alllist .realtime_list .update_time{right:10px !important;} .hate{opacity: .2;} .listtop{padding: 4px 6px;cursor: pointer;}'+
+        '.realtime_list dt{width:100% !important} .CBset{margin-top:10px;padding:4px 0 0 10px !important;} #CBSwitch input[type=checkbox]{margin-left:8px;}',
+        isOrig:false,
+         isChange:false,
+         OpenNew:false,//是否打开新窗
+         hateTopic:'',//默认过滤
+         //过滤标题
+         filter:function()
         {
-            HomePage.isOrig=!HomePage.isOrig;
-            GM_setValue('org',HomePage.isOrig);
+            if(HomePage.hateTopic=='')return;
+            var reg=new RegExp(HomePage.hateTopic);
+            $('.alllist dl').each(function(){var x=$(this);if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');});
+            $('#allnews_all .items_area').on('DOMNodeInserted',
+               function(e)
+               {
+                   if(e.target.nodeName!='DL')return true;
+                   var x=$(e.target);
+                   if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');
+               });
+        },
+        setting:function()
+        {
+            //获取过滤字符
+            this.hateTopic=GM_getValue('hateTopic','小米');
+            //添加设置页
+            $('<li/>').addClass('tab_item').html('<a class="two">设置</a>').appendTo($('.cb_box:last nav ul'));
+            // 设置界面
+            var s='<p class="notice CBset" >文章标题过滤:多个关键词用|隔开<br/>'+
+                '<input id="filterIn" style="width:150px" type="text" placeholder="多个关键词用|隔开" /><button id="filterOk">保存</button></p>'+
+                '<p class="notice CBset" id="CBSwitch">开关(刷新生效)<br/>'+
+                '<input type="checkbox" name="global" />全局<input type="checkbox" name="share" />分享</p>';
+            var a=$('<div/>').attr('id','side_set').hide().appendTo($('.side_news_list'));
+            a.html(s);
+            a.find(':checkbox').click(function(){GM_setValue($(this).attr('name'),this.checked);}).each(
+                function(){if(GM_getValue($(this).attr('name'),true))$(this).attr('checked','true');});
+            $('#filterIn').val(this.hateTopic);
+            $('#filterOk').click(
+                function()
+                {
+                    GM_setValue('hateTopic',$('#filterIn').val());
+                    alert('设置成功,刷新生效');
+                }
+            );
+            //必须调用原win的jQuery
+            function set(){uWin.jQuery('.side_news_nav').tabs('.side_news_list>div',{event:'mouseover'});};
+            uWin.setTimeout(set,1000);
+            $('#setting').click(set);
+        },
+        init:function()
+        {
+            this.OpenNew=GM_getValue('OpenNew',false);//新窗
+            this.isOrig=GM_getValue('org',false);//是否是原始风格
+            
+            //恢复官方样式
+            var Original_Style=function()
+            {
+                if(!HomePage.isChange)return;
+                $('.realtime').parent().find(':first').before($('.hotpush'));
+                $('.main_content_left > section').show();
+                $('.content_body .realtime').append($('.realtime_list'));
+            };
+            //精简样式
+            var New_Style=function(){
+                HomePage.isChange=true;
+                $('#allnews_all .items_area :first').before($('.realtime_list'));
+                $('.realtime_list').before($('.hotpush'));
+                $('.main_content_left > section').not(':last').hide();
+            };
+            // 修改样式
+            var do_change=function()
+            {
+                if(HomePage.isOrig)
+                {
+                    Original_Style();
+                    $('#Back').html('改');
+                    $('#Back').attr('title','修改');
+                }
+                else{New_Style();
+                     $('#Back').html('原');
+                     $('#Back').attr('title','恢复');
+                    }
+            };
             do_change();
+            $('.allinfo .blue_bar').append($('.J_realtime').clone());
+            var s='<span id="setting" class="fr listtop">设置</span>'+
+                '<span class="fr listtop"><input type="checkbox" id="OpenNew" '+(this.OpenNew?'checked="true"':'')+ ' />新</span>';
+            $('.allinfo .blue_bar').append(s);
+            // 新窗按钮的事件
+            function target(){if(HomePage.OpenNew)
+                $('a[target="_blank"]').attr('target','');
+                else $('a[target=""]').attr('target','_blank');
+                HomePage.OpenNew=!HomePage.OpenNew;
+                GM_setValue('OpenNew',HomePage.OpenNew);
+            }                                               
+            $('#OpenNew').click(target);
+            this.OpenNew=!this.OpenNew;
+            target();
+            //左侧的widget修正
+            $('#widgetDiv > *').not('#show_fav').not('#MoveMe').not('#Back').remove();
+            $('#Back').click(
+                function()
+                {
+                    HomePage.isOrig=!HomePage.isOrig;
+                    GM_setValue('org',HomePage.isOrig);
+                    do_change();
+                }
+            );
+            // 打开设置和过滤
+            this.setting();
+            this.filter();
         }
-    );
-    this.setting();
-    this.filter();
-}
-},
+    },
     CB_share={
         // 分享,来自 自古CB出评论脚本
         //sina_url:'http://service.weibo.com/share/share.php?title={{title}}&url={%url%}&appkey=696316965',
@@ -842,22 +858,20 @@
         init:function()
         {
             $('.hotcomments').on('DOMNodeInserted',
-                                 function(e)
-                                 {
-                                     
-                                     if(e.target.nodeName!='LI')return true;
-                                     var t=$(e.target);
-                                     if(t.find('.genPic').length>0)return true;
-                                     var con= $(e.target).find('em').html();
-                                     if(con.length>140){
-                                         var n=$('<span/>').addClass('genPic').html('生成长图');
-                                         t.find('.title .time').after(n);}
-                                     
-                                     
-                                     return true;
-                                 }
-                                );
-            
+               function(e)
+               {
+
+                   if(e.target.nodeName!='LI')return true;
+                   var t=$(e.target);
+                   if(t.find('.genPic').length>0)return true;
+                   var con= $(e.target).find('em').html();
+                   //对字数多的出现生成长图按钮
+                   if(con.length>140){
+                       var n=$('<span/>').addClass('genPic').html('生成长图');
+                       t.find('.title .time').after(n);}
+                       return true;
+                });
+            //控制分享内容
             $('#popshare li a').attr('onclick','').live('click',function(){
                 var tid = $(this).parents("#popshare").attr('data-tid');
                 var conNode=$('#hotcon'+tid);
@@ -865,10 +879,12 @@
                     CB_share.template.replace('{%comment%}',conNode.html().substr(0,80))
                 .replace('{%title%}',Article.title)
                 .replace('{%tag%}','#自古CB出评论# #CB评论#')
+                .replace('{%tag1%}','#自古CB出评论#')
                 ;
                 var op={title:sharetitle,content:sharetitle};
                 var pic=conNode.attr('pic');
                 newopen=uWin.open;
+                // 如果有图片,必须加上,通过hook open实现,通用性较低,新浪微博和qq可用
                 if(pic)
                 {
                     op.pic=pic;
@@ -878,45 +894,44 @@
                 uWin.open=newopen;
             });
             $('.genPic').live('click',function()
-                              {
-                                  var conNode=$(this).parents('div.comContent').find('em');
-                                  var title=conNode.html();
-                                  /*;*/
-                                  var pic=null;
-                                  GM_xmlhttpRequest({
-                                      timeout:1000*30,
-                                      method: "POST",
-                                      url:'http://www.taichangle.com/taichangle.php',
-                                      data:'text='+encodeURIComponent(title),
-                                      headers: {
-                                          "Content-Type": "application/x-www-form-urlencoded"
-                                      },
-                                      synchronous:true,
-                                      onload: function(response) {
-                                          var data=JSON.parse(response.responseText);
-                                          
-                                          if(data.errno==0)
-                                          {
-                                              pic='http://www.taichangle.com/'+data.image_url;
-                                              CB_comment.TipAdd('长图获取成功!');
-                                          }
-                                          else
-                                          {
-                                              CB_comment.TipAdd('长图获取失败:'+data.error);
-                                          }
-                                          if(pic)
-                                          {
-                                              conNode.attr('pic',pic);
-                                          }
-                                      }
-                                  });
-                                  
-                                  return false;
-                              });
+            {
+              var conNode=$(this).parents('div.comContent').find('em');
+              var title=conNode.html();
+              //获取长图的按钮
+              var pic=null;
+              GM_xmlhttpRequest({
+                  timeout:1000*30,
+                  method: "POST",
+                  url:'http://www.taichangle.com/taichangle.php',
+                  data:'text='+encodeURIComponent(title),
+                  headers: {
+                      "Content-Type": "application/x-www-form-urlencoded"
+                  },
+                  synchronous:true,
+                  onload: function(response) {
+                      var data=JSON.parse(response.responseText);
+                      if(data.errno==0)
+                      {
+                          pic='http://www.taichangle.com/'+data.image_url;
+                          CB_comment.TipAdd('长图获取成功!');
+                      }
+                      else
+                      {
+                          CB_comment.TipAdd('长图获取失败:'+data.error);
+                      }
+                      if(pic)
+                      {
+                          conNode.attr('pic',pic);
+                      }
+                  }
+              });
+            return false;
+            });
             $('.hotcomments header').append('<button class="fr" id="changeTemp">更改分享模板</button>');
             //参考 自古CB出评论 添加了官方的标签
             $('#changeTemp').click(function(){
-                var template_input = window.prompt("「#自古CB出评论」模板设置\n\n可用变量：\n{%title%} - 文章标题；\n{%comment%} - 评论正文；\n{%tag%} - 标签；\n\n默认值：" + CB_share.templateO + "\n\n", CB_share.template);
+                var template_input = window.prompt("「自古CB出评论」模板设置\n\n可用变量：\n{%title%} - 文章标题；\n{%comment%} - 评论正文；\n"+
+                    "{%tag%} - 标签；\n{%tag1%} - 单标签；\n\n默认值：" + CB_share.templateO + "\n\n", CB_share.template);
                 if (template_input !== null && CB_share.template !== template_input) {
                     GM_setValue("template", template_input);
                     CB_share.changeTemp(template_input);
@@ -928,9 +943,8 @@
         {
             CB_share.template=s;
         }
-        
-        
     };
+    //去除广告,建议是使用adp去除的
 function RemoveAD ()
 {
     Log('enter AdRemove');
@@ -945,19 +959,29 @@ function init()
     Log('enter init');
     if($('#CBset').length>0)return;
     if($('#widgetDiv').length>0)return;
-    MustAddStyle(CB_comment.GETTER_STYlE+CB_Widget.Widget_CSS+HomePage.CSS+CB_share.CSS);
     window.setTimeout(RemoveAD,2000);
-    CB_Widget.init();
-    if(isNaN(Article.id))
+    var isMainPage=isNaN(Article.id);
+    //如果全局打开的
+    if(GM_getValue('global',true))
     {
-        HomePage.init();
-        return;
+        MustAddStyle(CB_comment.GETTER_STYlE+CB_Widget.Widget_CSS+HomePage.CSS+CB_share.CSS);
+        CB_Widget.init();
+        if(isMainPage)
+        {
+            HomePage.init();
+            return;
+        }
+        $('#Back').remove();
+        $('.cb_box a[target="_blank"]').attr('target','');
+        CB_comment.init_Comment();
+        if(GM_getValue('share',true))//分享
+        CB_share.init();
     }
-    $('#Back').remove();
-    $('.cb_box a[target="_blank"]').attr('target','');
-    CB_comment.init_Comment();
-    CB_share.init();
-    Log('id='+Article.id);
+    else//否则只显示设置
+        {
+            MustAddStyle(HomePage.CSS);
+            if(isMainPage)HomePage.setting();
+        }
 } 
 
 // 运行
