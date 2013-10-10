@@ -16,7 +16,7 @@
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.3.9
+// @version         0.4.0
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
@@ -195,6 +195,9 @@
                              });
                          });
                         }
+                    // 10.10 修正内容清空
+                    $('#J_commt_list').html('');
+                    $('#J_hotcommt_list').html('');
                      //hook并实现评论显示
                      uWin.GV.COMMENTS.CMNTDICT=ret.result.cmntdict;
                      uWin.GV.COMMENTS.CMNTLIST=ret.result.cmntlist;
