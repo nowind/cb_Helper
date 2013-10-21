@@ -16,7 +16,7 @@
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.4.0
+// @version         0.4.1
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
@@ -96,6 +96,7 @@
                  GM_setValue('auto',auto);
                  var context;
                  this.boxEl.style.backgroundColor =auto ? '#adcaec' : 'black';
+                 this.boxEl.style['z-index']=100;
                  this.moonEl.title = auto ? '右击切换到手动模式' : '右击切换到自动模式';
                  $(this.moonEl).attr('auto',!!auto);
                  context = this.moonEl.getContext('2d');
@@ -240,7 +241,7 @@
                         //2个停用的源
                      //  yg_url = 'http://yueguang.sinaapp.com/?id=' + id,
                      // iz_url = 'http://py.imorz.tk/tools/cb/hotcomment/'+id,
-                     my_url = 'http://arm.itkso.com/php/cb.php?sid='+id,
+                     my_url = 'http://arm.itkso.com/node/cb/'+id,
                      offical_url = 'http://api.cnbeta.com/capi/phone/comment?article=' +id;
                  //从个人服务器获取数据
                  function fetchMyUrl()
@@ -988,6 +989,7 @@ function init()
 } 
 
 // 运行
+if(!uWin){Log('unsafeWindow no support!!!!!');return;}
 RemoveAD();
 init();
 window.setTimeout(init,1000);
