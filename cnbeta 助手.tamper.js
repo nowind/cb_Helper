@@ -12,11 +12,10 @@
 // @grant          GM_getValue
 // @grant          unsafeWindow
 // @require         http://static.cnbetacdn.com/assets/js/jquery.js
-// @require         http://onehackoranother.com/projects/jquery/tipsy/javascripts/jquery.tipsy.js
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.4.1
+// @version         0.4.2
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
@@ -444,26 +443,48 @@
                              showFav:false,
                              // css
                              Widget_CSS:'.back_box a{background-position: -141px -165px !important;} .back_box a:hover{background-position: 0 -165px !important;} .del{margin-left:5px}'+
-                             '.left_content{margin-left: -490px;width: 200px;background-color: white;opacity: 0.7;border-radius: 0 9px 9px 0;}.left_content dd{color: black !important;}',
+                             '.left_content{margin-left: -490px;width: 200px;background-color: white;opacity: 0.7;border-radius: 0 9px 9px 0;}.left_content dd{color: black !important;}'+
+                             '',
                              // 初始化总侧边工具
                              init_widget:function()
                              {
-                                 
+                                 //评论框按钮设置id下边会添加一个评论框按钮样式
                                  $('.cmt_box').attr('id','cmt_box_btn');
+                                 //右边的内容框
+                                 this.initContent();
+                                 //添加返回
+                                 $('<div>',{class:'left_art_box cmt_box back_box'}).html('<a href="/">喷水网</a>').appendTo('#left_art');
+                                 $('.left_art_box a').addClass('SidePic');
+                                 //事件重新设置
+                                 this.ReBindListener();
+                                 
+                             },
+                             initContent:function(){
                                  var cmtDiv=$('<div/>',{id:'cmtDiv'}).html('<textarea id="comment_text1" style="border:1px solid ;background-color: transparent; margin-top: 0px; margin-bottom: 0px; height: 120px;width:90%;display:block; " placeholder="填写评论" ></textarea>'+
                                                                            '<img id="safecode1" style="display:block;width:70px;margin-top: 5px;display: inline;" /> <input style="top: -20px;position: relative; width:70px;display:none;" type="text" id="vcode1" />').hide();
                                  var favDiv=$('<div/>',{id:'favDiv'}).hide();
-                                 $('<div>',{class:'left_art_box cmt_box back_box'}).html('<a href="/">喷水网</a>').appendTo('#left_art');
-                                 $('.left_art_box a').addClass('SidePic');
                                  $('<div/>',{class:'left_art left_content'}).css('z-index','88888').appendTo($('.wrapper')).html(cmtDiv).append(favDiv).hide();
-                                 this.ReBindListener();
-                                 
                              },
                              ReBindListener:function(){
                                  $('#left_art').off('mouseover');
                                  $('#left_art').mouseleave(function(){t=$(this);if(!t.hasClass('left_art_short'))t.addClass('left_art_short');});
                                  $('#left_art').mouseenter(function(){$(this).removeClass('left_art_short');});
-                                 $('#dig_btn a').attr('title','打分').html('<span style="line-height: 2em;font-size:20px;">+5</span>');
+                                 $('#dig_btn a').attr({title:'打分',id:'P5'}).html('<span id="N5" style="line-height: 2em;font-size:20px;">☆+5</span>').mouseover(
+                                     function(){$('#N5').html('☆+5');return true;});
+                                 $('#dig_btn span').css('z-index','789').mouseover(
+                                     function(){$('#N5').html('☆-5'); return false;});
+                                 this.HideContentLinstener();
+                             },
+                             //主页要生成
+                             initHome:function()
+                             {
+                                 if($('#left_art').length>0)return;
+                                 $('<div/>',{id:'left_art',class:'left_art left_art_short'}).appendTo('.main_content');
+                                 $('<div/>',{class:'left_art_box dig_box',id:'Back'}).html('<a title="" class="SidePic" href="#"></a>').appendTo('#left_art');
+                                 $('<div/>',{class:'left_art_box fav_box',id:'favorite_btn'}).html('<a title="显示收藏" class="SidePic" href="#">收藏</a>').appendTo('#left_art');
+                                 this.initContent();
+                                 this.init_Favs();
+                                 this.ReBindListener();
                              },
                              init:function()
                              {
@@ -471,6 +492,20 @@
                                  this.init_Favs();
                                  this.init_mark();
                                  this.init_comment(); 
+                             },
+                             HideContentLinstener:function()
+                             {
+                                 // 键盘和鼠标关掉评论框
+                                 $('body').keydown(function(e){
+                                     if(e.which==27)
+                                         $('.left_content').hide();
+                                     return true;
+                                 });
+                                 $('body').mousedown(function(e){
+                                     if(e.which==1&&($(e.target).is('div')||$(e.target).is('p')||$(e.target).is('body')||$(e.target).is('section')))
+                                         $('.left_content').hide();
+                                     return true;
+                                 });
                              },
                              // 初始化评论按钮
                              init_comment:function()
@@ -483,17 +518,7 @@
                                          $('#favDiv').hide();
                                          $('#comment_text1').focus();
                                      });
-                                 // 键盘和鼠标关掉评论框
-                                 $('body').keydown(function(e){
-                                     if(e.which==27)
-                                         $('.left_content').hide();
-                                     return true;
-                                 });
-                                 $('body').mousedown(function(e){
-                                     if(e.which==1&&($(e.target).is('div')||$(e.target).is('p')||$(e.target).is('body')))
-                                         $('.left_content').hide();
-                                     return true;
-                                 });
+                                 
                                  // 刷新验证码
                                  function _imgload()
                                  {
@@ -545,13 +570,16 @@
                              // 打分
                              init_mark:function()
                              {
-                                 $('#P5').click(function(){
+                                 $('#P5').bind('click',function(){
                                      $('li[data-score=5]').click();
                                      CB_comment.TipAdd('5打分OK！！');
+                                     $(this).off('click');
+                                     return false;
                                  });
                                  $('#N5').click(function(){
                                      $('li[data-score=-5]').click();
                                      CB_comment.TipAdd('-5打分OK！！');
+                                     return false;
                                  });
                              },
                              init_Favs:function()
@@ -569,6 +597,8 @@
                                  // 添加到收藏
                                  $('#favorite_btn').bind('click',function(){
                                      Log('click add_fav');
+                                     $(this).off('click');
+                                     if(Article.notArt){$(this).unbind('click');return;}
                                      $('.left_content').hide();
                                      var id = Article.id;
                                      //判断是否已存在
@@ -581,7 +611,7 @@
                                      CB_comment.TipAdd('收藏文章id'+id+'成功!');
                                      CB_Widget.favs.push([id,Article.title]);
                                      GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                     $(this).off('click');
+                                     
                                  }).mouseenter(function(){
                                      var s='';
                                      for (var i in CB_Widget.favs)
@@ -681,12 +711,12 @@
                                          if(HomePage.isOrig)
                                          {
                                              Original_Style();
-                                             $('#Back').html('改');
-                                             $('#Back').attr('title','修改');
+                                             $('#Back a').html('精简');
+                                             $('#Back a').attr('title','精简');
                                          }
                                          else{New_Style();
-                                              $('#Back').html('原');
-                                              $('#Back').attr('title','恢复');
+                                              $('#Back a').html('原始');
+                                              $('#Back a').attr('title','原始');
                                              }
                                      };
                                      do_change();
@@ -705,7 +735,6 @@
                                      this.OpenNew=!this.OpenNew;
                                      target();
                                      //左侧的widget修正
-                                     $('#widgetDiv > *').not('#show_fav').not('#MoveMe').not('#Back').remove();
                                      $('#Back').click(
                                          function()
                                          {
@@ -835,12 +864,15 @@
          if(GM_getValue('global',true))
          {
              MustAddStyle(picCSS+CB_comment.GETTER_STYlE+CB_Widget.Widget_CSS+HomePage.CSS+CB_share.CSS);
-             CB_Widget.init();
+             
              if(isMainPage)
              {
+                 CB_Widget.initHome();
                  HomePage.init();
+                 
                  return;
              }
+             CB_Widget.init();
              $('#Back').remove();
              $('.cb_box a[target="_blank"]').attr('target','');
              CB_comment.init_Comment();
