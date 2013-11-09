@@ -15,7 +15,7 @@
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.4.2
+// @version         0.4.6
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
@@ -24,7 +24,7 @@
      "use strict";
      //调试开关 总控所有输出
      function Log(s){
-         var _LOG=true;
+         var _LOG=false;
          if(_LOG)
          {console.log(s);}
      }
@@ -49,6 +49,7 @@
      }
      
      var 
+     isRun=function(){if($('.CBset').length>0||$('.SidePic').length>0)return true;return false;},
      picCSS='.SidePic{background-image: url("data:image/png;base64,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") !important;}',
      uWin=MustGetUnsafeWin(),
          
@@ -401,10 +402,11 @@
                              $('body').append(this.boxEl); 
                              //判断是否启动自动模式
                              var Auto=GM_getValue('auto',false);
+                             this.draw_a_moon(Auto);
                              //是否过期
+                             
                              if(!this.ifDated())
                              {
-                                 this.draw_a_moon(false);
                                  $(this.moonEl).click(function()
                                                       {
                                                           CB_comment.AddMobileComment();
@@ -412,7 +414,7 @@
                                                       });
                                  return;
                              }
-                             this.draw_a_moon(Auto);
+                             
                              //自动的话显示评论
                              if(Auto)
                                  this.ShowContent();
@@ -443,7 +445,7 @@
                              showFav:false,
                              // css
                              Widget_CSS:'.back_box a{background-position: -141px -165px !important;} .back_box a:hover{background-position: 0 -165px !important;} .del{margin-left:5px}'+
-                             '.left_content{margin-left: -490px;width: 200px;background-color: white;opacity: 0.7;border-radius: 0 9px 9px 0;}.left_content dd{color: black !important;}'+
+                             '.left_content{margin-left: -490px;width: 200px;background-color: white;opacity: 0.7;border-radius: 0 9px 9px 0;overflow-y: auto;}.left_content dd{color: black !important;}'+
                              '',
                              // 初始化总侧边工具
                              init_widget:function()
@@ -473,7 +475,10 @@
                                      function(){$('#N5').html('☆+5');return true;});
                                  $('#dig_btn span').css('z-index','789').mouseover(
                                      function(){$('#N5').html('☆-5'); return false;});
+                                 $('#P5').off('click');
+                                 $('#favorite_btn').attr('id','favorite_btn_');
                                  this.HideContentLinstener();
+                                 
                              },
                              //主页要生成
                              initHome:function()
@@ -481,7 +486,7 @@
                                  if($('#left_art').length>0)return;
                                  $('<div/>',{id:'left_art',class:'left_art left_art_short'}).appendTo('.main_content');
                                  $('<div/>',{class:'left_art_box dig_box',id:'Back'}).html('<a title="" class="SidePic" href="#"></a>').appendTo('#left_art');
-                                 $('<div/>',{class:'left_art_box fav_box',id:'favorite_btn'}).html('<a title="显示收藏" class="SidePic" href="#">收藏</a>').appendTo('#left_art');
+                                 $('<div/>',{class:'left_art_box fav_box',id:'favorite_btn_'}).html('<a title="显示收藏" class="SidePic" href="#">收藏</a>').appendTo('#left_art');
                                  this.initContent();
                                  this.init_Favs();
                                  this.ReBindListener();
@@ -573,7 +578,6 @@
                                  $('#P5').bind('click',function(){
                                      $('li[data-score=5]').click();
                                      CB_comment.TipAdd('5打分OK！！');
-                                     $(this).off('click');
                                      return false;
                                  });
                                  $('#N5').click(function(){
@@ -595,9 +599,8 @@
                                  }
                                  $('.fav_box em').html(this.favs.length);
                                  // 添加到收藏
-                                 $('#favorite_btn').bind('click',function(){
+                                 $('#favorite_btn_').bind('click',function(){
                                      Log('click add_fav');
-                                     $(this).off('click');
                                      if(Article.notArt){$(this).unbind('click');return;}
                                      $('.left_content').hide();
                                      var id = Article.id;
@@ -611,7 +614,7 @@
                                      CB_comment.TipAdd('收藏文章id'+id+'成功!');
                                      CB_Widget.favs.push([id,Article.title]);
                                      GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                     
+                                     $('.fav_box em').html(CB_Widget.favs.length);
                                  }).mouseenter(function(){
                                      var s='';
                                      for (var i in CB_Widget.favs)
@@ -630,10 +633,12 @@
                                                             CB_comment.TipAdd('删除收藏文章id'+CB_Widget.favs[i][0]+'成功!');
                                                             CB_Widget.favs.splice(i,1);
                                                             GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                                            $('cmtDiv').hide();
+                                                            $('.left_content').hide();
                                                             break;
                                                         }
+                                                        $('.fav_box em').html(CB_Widget.favs.length);
                                                         });
+                                 $('.fav_box em').html(CB_Widget.favs.length);				
                              }
                          },//CB_Widget
                              HomePage={
@@ -648,13 +653,19 @@
                                  {
                                      if(HomePage.hateTopic=='')return;
                                      var reg=new RegExp(HomePage.hateTopic);
-                                     $('.alllist dl').each(function(){var x=$(this);if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');});
+                                     function filterTitle(x){var z=$(x).find('dt a'),y=GM_getValue('filterMove',true);
+                                                             if(!HomePage.OpenNew)z.attr('target','');
+                                                              if(z.html().search(reg)>-1){
+                                                                              if(!y)$(x).addClass('hate');
+                                                                              else $(x).remove();
+                                                              }
+                                                            }
+                                     $('.alllist dl').each(function(){filterTitle(this);});
                                      $('#allnews_all .items_area').on('DOMNodeInserted',
                                                                       function(e)
                                                                       {
                                                                           if(e.target.nodeName!='DL')return true;
-                                                                          var x=$(e.target);
-                                                                          if(x.find('dt a').html().search(reg)>-1)x.addClass('hate');
+                                                                          filterTitle(e.target);
                                                                       });
                                  },
                                  setting:function()
@@ -665,7 +676,8 @@
                                      $('<li/>').addClass('tab_item').html('<a class="two">设置</a>').appendTo($('.cb_box:last nav ul'));
                                      // 设置界面
                                      var s='<p class="notice CBset" >文章标题过滤:多个关键词用|隔开<br/>'+
-                                         '<input id="filterIn" style="width:150px" type="text" placeholder="多个关键词用|隔开" /><button id="filterOk">保存</button></p>'+
+                                         '<input id="filterIn" style="width:150px" type="text" placeholder="多个关键词用|隔开" /><button id="filterOk">保存</button>'+
+                                         ' <input type="checkbox" name="filterMove" style="margin-left:10px;" />直接移除</p>'+
                                          '<p class="notice CBset" id="CBSwitch">开关(刷新生效)<br/>'+
                                          '<input type="checkbox" name="global" />全局<input type="checkbox" name="share" />分享</p>';
                                      var a=$('<div/>').attr('id','side_set').hide().appendTo($('.side_news_list'));
@@ -732,6 +744,7 @@
                                                        GM_setValue('OpenNew',HomePage.OpenNew);
                                                       }                                               
                                      $('#OpenNew').click(target);
+                                     
                                      this.OpenNew=!this.OpenNew;
                                      target();
                                      //左侧的widget修正
@@ -847,17 +860,21 @@
      function RemoveAD ()
      {
          Log('enter AdRemove');
+         if(isRun())return;
          $('script').each(function(){if(this.src)return;if(this.src.match('baidu|google')||$(this).html().match('baidu|google'))$(this).remove();});
          $('iframe').remove();
          $('div[id*=baidu]').remove();
          $('div[id*=tanxssp]').remove();
+         $('[class*=gbox]').not('[class*=imgbox]').remove();
          $('.adsbygoogle').remove();
+         $('.bd_r').remove();
+         $('#right4').remove();
+         $('#job_box').hide().parents('.cber').find('header').append('(点击展开)').click(function(){$('#job_box').show()});
      }
      function init()
      {
          Log('enter init');
-         if($('#CBset').length>0)return;
-         if($('.SidePic').length>0)return;
+         if(isRun())return;
          window.setTimeout(RemoveAD,2000);
          var isMainPage=Article.notArt=isNaN(Article.id);
          //如果全局打开的
