@@ -15,7 +15,7 @@
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.4.6
+// @version         0.4.9
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
@@ -24,7 +24,7 @@
      "use strict";
      //调试开关 总控所有输出
      function Log(s){
-         var _LOG=false;
+         var _LOG=0;
          if(_LOG)
          {console.log(s);}
      }
@@ -73,8 +73,8 @@
                      {
                          //定义常量
                          GETTER_STYlE:'#yigle_net_yueguangbaohe{border-radius:5px;overflow:hidden;position:fixed;top:20px;right:50px;width:50px;height:50px;background:black;cursor:pointer;opacity:0.9;} #y_tips{position: fixed;bottom: 25px;right: 5px;width: 260px;padding: 6px;color: rgb(255, 255, 255);background-color: rgb(0, 0, 0);text-align: center;}'
-                         +'.commt_list .comment_avatars,blockquote .re_mark,blockquote .title,.rating_box ,.commt_list > nav,.article .navi{display:none !important;}'+
-                         ' .commt_list .comment_body {padding-left:5px !important;} .commt_list .comment_body .re_mark{display:none;} span.datetime{cursor: pointer;}'+
+                         +'.commt_list .comment_avatars,blockquote .re_mark,blockquote .title,.rating_box ,.commt_list > nav,.article .navi,#post_sync{display:none !important;}'+
+                         ' .commt_list .comment_body {padding-left:5px !important;} span.datetime{cursor: pointer;}'+
                          '.post_commt .textarea_wraper{display:inline;} .commt_sub{right: 100px;top: 1px;position:absolute !important;} #post_tips{top: 80px;} .commt_list dd {margin: 0px !important;}'+
                          '.commt_list blockquote,.commt_list blockquote p.re_text{margin:0 0 0 10px !important;padding: 0px !important;} .pm{padding-left:10px;padding-right:10px}',
                          
@@ -243,7 +243,7 @@
                                  //2个停用的源
                                  //  yg_url = 'http://yueguang.sinaapp.com/?id=' + id,
                                  // iz_url = 'http://py.imorz.tk/tools/cb/hotcomment/'+id,
-                                 my_url = 'http://arm.itkso.com/node/cb/'+id,
+                                 my_url = 'http://aws.itkso.com/node/cb/'+id,
                                  offical_url = 'http://api.cnbeta.com/capi/phone/comment?article=' +id;
                              //从个人服务器获取数据
                              function fetchMyUrl()
@@ -375,6 +375,7 @@
                                                  {
                                                      if(e.target.nodeName!='DL')return true;
                                                      $(e.target).find('.datetime').html('<span ref="p" class="pm">+1</span><span ref="m" class="pm">-1</span>点击出现支持反对');
+                                                     $(e.target).find('.re_mark').hide();
                                                      return true;
                                                  });
                              // 处理上面添加的按钮的事件 通过冒泡想上一级发送
@@ -382,6 +383,7 @@
                                                         {
                                                             if(e1.target.className=='datetime')
                                                             {
+                                                                Log('you click show bar');
                                                                 $(this).find('.re_mark').show();
                                                                 return false;
                                                             }
@@ -567,6 +569,7 @@
                                          $('#post_btn').click();
                                          CB_comment.TipAdd('快速评论ing！！');
                                          $('.left_content').hide();
+                                         $('#favorite_btn_').click();
                                          return false;
                                      }
                                      else return true;
@@ -614,7 +617,7 @@
                                      CB_comment.TipAdd('收藏文章id'+id+'成功!');
                                      CB_Widget.favs.push([id,Article.title]);
                                      GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                     $('.fav_box em').html(CB_Widget.favs.length);
+                                     $('.fav_box em').html(this.favs.length);
                                  }).mouseenter(function(){
                                      var s='';
                                      for (var i in CB_Widget.favs)
@@ -633,12 +636,11 @@
                                                             CB_comment.TipAdd('删除收藏文章id'+CB_Widget.favs[i][0]+'成功!');
                                                             CB_Widget.favs.splice(i,1);
                                                             GM_setValue('favs',JSON.stringify(CB_Widget.favs));
-                                                            $('.left_content').hide();
+                                                            $('cmtDiv').hide();
                                                             break;
                                                         }
-                                                        $('.fav_box em').html(CB_Widget.favs.length);
                                                         });
-                                 $('.fav_box em').html(CB_Widget.favs.length);				
+                                 				$('.fav_box em').html(this.favs.length);
                              }
                          },//CB_Widget
                              HomePage={
