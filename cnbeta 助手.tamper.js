@@ -11,17 +11,18 @@
 // @grant          GM_setValue
 // @grant          GM_getValue
 // @grant          unsafeWindow
+// @icon            http://www.cnbeta.com/favicon.ico
 // @require         http://static.cnbetacdn.com/assets/js/jquery.js
 // @updateURL       https://userscripts.org/scripts/source/170299.meta.js
 // @downloadURL     https://userscripts.org/scripts/source/170299.user.js
 // @license         MIT License
-// @version         0.4.9
+// @version         0.5.3
 // @run-at          document-end
 // @author          @nowind
 // ==/UserScript==
 (function()
  {
-     "use strict";
+    // "use strict";
      //调试开关 总控所有输出
      function Log(s){
          var _LOG=0;
@@ -31,7 +32,7 @@
      // 获取不安全的win 
      function MustGetUnsafeWin()
      {
-         if(window.unsafeWindow){return window.unsafeWindow;}
+         if(unsafeWindow){return unsafeWindow;}
          //  脚本注入,在部分chrome中会失败
          var c=document.createElement('div');
          c.setAttribute('onclick','return window');
@@ -49,7 +50,7 @@
      }
      
      var 
-     isRun=function(){if($('.CBset').length>0||$('.SidePic').length>0)return true;return false;},
+     isRun=function(){Log('enter isrun');if($('.CBset').length>0||$('.SidePic').length>0)return true;return false;},
      picCSS='.SidePic{background-image: url("data:image/png;base64,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") !important;}',
      uWin=MustGetUnsafeWin(),
          
@@ -202,6 +203,8 @@
                                  $('#J_commt_list').html('');
                                  $('#J_hotcommt_list').html('');
                                  //hook并实现评论显示
+                                 Log(uWin.GV);
+                                 Log(unsafeWindow);
                                  uWin.GV.COMMENTS.CMNTDICT=ret.result.cmntdict;
                                  uWin.GV.COMMENTS.CMNTLIST=ret.result.cmntlist;
                                  uWin.GV.COMMENTS.HOTLIST=ret.result.hotlist;
@@ -212,27 +215,51 @@
                                  uWin.GV.COMMENTS.PAGE=1;
                                  // 拓展变量作用域
                                  var genList,genHotList,_hook,self,loadCmt,cmtList,lastT,more,
-                                     initData,bindAction,fixed_top;
+                                     initData,bindAction,fixed_top,cmtPosted,cmt_tp;
                                  var GV=uWin.GV;
                                  var CB=uWin.CB;
                                  Log('eval begin');
                                  // 去掉函数调用以及声明
-                                 eval('_hook='+uWin.$.cmtOnload.toString().replace('initData(1)','').replace(/var/g,''));
+                                 var _hook_str=uWin.$.cmtOnload.toString().replace('initData(1)','').replace(/var/g,'').replace('"use strict";','');
+                                // Log(_hook_str);
+                                 eval('_hook='+_hook_str);
+                                 uWin.GV.EMOTION={};
+                                 GV.EMOTION=uWin.GV.EMOTION;
+                                 //Log(GV.EMOTION.EMO_DATA);
+                                 $.wysiwyg=function(a){return a;};
+                                // $.wysiwyg=uWin.$.wysiwyg;
                                  Log('_hook start');
                                  _hook('.commt_list');
+                                 Log('_hook end');
                                  $("#comment_num").html(ret.result.comment_num);
                                  $("#view_num").html(ret.result.view_num);
                                  $(".post_count").html('共有<em>'+ret.result.comment_num+'</em>条评论，显示<em>'+ret.result.join_num+'</em>条').fadeIn();
                                  uWin.initData=initData;
                                  uWin.genList=genList;
-                                 genList();
+                                 Log('genList start');
+                                 cmt_tp='<dl id="J_Comment_Item_<%=tid%>"><dt><strong class="re_lou"><%=lou%>楼</strong><span class="re_username"><%=name%></span><span class="re_area">来自[<%=host_name%>]</span><span class="datetime">发表于 <%=date%></span></dt><dd class="comment_avatars"><img width="48px" height="48px" src="<%=icon%>" /></dd><dd class="comment_body"><div id="J_Comment_Quote_<%=tid%>"></div><div class="re_text"><%=comment%></div><div class="re_mark"><span action-tid="<%=tid%>"><a class="commt_a_link" supported="false" action-type="support" href="javascript:;" title="支持"><span>支持(<em><%=score%></em>)</span></a><a class="commt_a_link" againsted="false" action-type="against" href="javascript:;" title="反对"><span>反对(<em><%=reason%></em>)</span></a><a class="commt_a_link" reported="false" action-type="report" href="javascript:;" title="此评论有问题，点击举报"><span>举报</span></a><a class="commt_a_link" href="javascript:;" action-type="reply"><span>回复</span></a></span></div></dd></dl>';
+                                 quote_tp='<blockquote id="J_Comment_Quote_<%=ptid%>_<%=tid%>"><div class="commt_info"><p class="title"><span class="re_username"><%=name%></span><span class="re_area">来自[<%=host_name%>]</span><span class="floorCount"><%=quote_num%></span></p><p class="re_text"><%=comment%></p><p class="re_mark"><span action-tid="<%=tid%>"><a class="commt_a_link" supported="false" action-type="support" href="javascript:;" title="支持"><span>支持(<em><%=score%></em>)</span></a><a class="commt_a_link" againsted="false" action-type="against" href="javascript:;" title="反对"><span>反对(<em><%=reason%></em>)</span></a><a class="commt_a_link" reported="false" action-type="report" href="javascript:;" title="此评论有问题，点击举报"><span>举报</span></a><a class="commt_a_link" href="javascript:;" action-type="reply"><span>回复</span></a></span></p></div></blockquote>';
+                                 hot_tp='<li <%=li_class%>><div class="comContent"><p class="title"><span class="userName"><%=name%></span><span class="re_area">[<%=host_name%>]</span><span class="time"><%=date_show%></span></p><div class="con"><em id="hotcon<%=tid%>"><%=comment%></em></div></div><div class="re_mark"><span action-tid="<%=tid%>"><a class="commt_a_link" action-type="share" href="javascript:;" title="分享"><span class="b">分享</span><a class="commt_a_link" supported="false" action-type="support" href="javascript:;" title="支持"><span>支持(<em><%=score%></em>)</span></a><a class="commt_a_link" againsted="false" action-type="against" href="javascript:;" title="反对"><span>反对(<em><%=reason%></em>)</span></a><a class="commt_a_link" reported="false" action-type="report" href="javascript:;" title="此评论有问题，点击举报"><span>举报</span></a><a class="commt_a_link" action-type="reply" href="javascript:;"><span>回复</span></a></span></div></li>';
+                                 //CB javascript template (author: John Resig http://ejohn.org/blog/javascript-micro-templating/)
+    var cache = {};
+    this.tmpl=function tmpl(str,data){var fn=!/\W/.test(str)?cache[str]=cache[str]||tmpl(document.getElementById(str).innerHTML):new Function("obj","var p=[],print=function(){p.push.apply(p,arguments);};"+"with(obj){p.push('"+str.replace(/[\r\t\n]/g," ").split("<%").join("\t").replace(/((^|%>)[^\t]*)'/g,"$1\r").replace(/\t=(.*?)%>/g,"',$1,'").split("\t").join("');").split("%>").join("p.push('").split("\r").join("\\'")+"');}return p.join('');");return data?fn(data):fn};
+    CB.tmpl = function (str, data) {
+        var fn = !/\W/.test(str) ? cache[str] = cache[str] || tmpl(str) :
+        new Function("obj", "var p=[],print=function(){p.push.apply(p,arguments);};" +
+        "with(obj){p.push('" +
+        str.replace(/[\r\t\n]/g, " ").split("<%").join("\t").replace(/((^|%>)[^\t]*)'/g, "$1\r").replace(/\t=(.*?)%>/g, "',$1,'").split("\t").join("');").split("%>").join("p.push('").split("\r").join("\\'") + "');}return p.join('');");
+        return data ? fn(data) : fn;
+    };
+                                 genList(true);
                                  Log('genHotList start');
                                  $("#J_hotcommt_list").parent().show();
                                  genHotList();
+                                 Log('bindAction start');
                                  bindAction();
+                                 return true;
                              }
                              catch(e)
-                             {Log(e.message);}
+                             {Log(e); return false;}
                          },
                          // 获取内容
                          GetContent :function()
@@ -257,9 +284,9 @@
                                          var data=response.responseText;
                                          if( data.length>1)
                                          {
-                                             CB_comment.setComment(data,true);
+                                             if(CB_comment.setComment(data,true)){
                                              CB_comment.showLv=4;
-                                             CB_comment.TipAdd('个人服务器获取数据成功');
+                                                CB_comment.TipAdd('个人服务器获取数据成功');}
                                          }
                                          else
                                          {
@@ -299,9 +326,9 @@
                                              newdata.cmntstore=sto;
                                              newdata.comment_num=newdata.join_num=lis.length;
                                              Log(newdata);
-                                             CB_comment.setComment({result:newdata},false);
-                                             CB_comment.showLv=3;
-                                             CB_comment.TipAdd('官方手机API获取数据成功');
+                                             if(CB_comment.setComment({result:newdata},false)){
+                                             	CB_comment.showLv=3;
+                                                 CB_comment.TipAdd('官方手机API获取数据成功');}
                                          }
                                          else
                                          {
@@ -346,7 +373,7 @@
                          //添加移动站内容
                          AddMobileComment:function()
                          {
-                             var url='http://m.cnbeta.com/comments.htm?id='+Article.id;
+                             var url='http://m.cnbeta.com/wap/comments.htm?id='+Article.id;
                              GM_xmlhttpRequest({
                                  method: "GET",
                                  url:url,
@@ -446,9 +473,13 @@
                              // 标志是否显示收藏
                              showFav:false,
                              // css
-                             Widget_CSS:'.back_box a{background-position: -141px -165px !important;} .back_box a:hover{background-position: 0 -165px !important;} .del{margin-left:5px}'+
+                             Widget_CSS:'.dig_box a:link{background-position:  -141px 0px !important;} .dig_box a:hover{background-position:  0px 0px !important;}'+
+                            
+                             '.fav_box a:link{background-position:  -141px -55px !important;} .fav_box a:hover{background-position:  0px -55px !important;}'+
+                             '.cmt_box a:link{background-position:  -141px -110px !important;} .cmt_box a:hover{background-position:  0px -110px !important;}'+
+                              '.back_box a:link{background-position: -141px -165px !important;} .back_box a:hover{background-position: 0 -165px !important;} .del{margin-left:5px}'+
                              '.left_content{margin-left: -490px;width: 200px;background-color: white;opacity: 0.7;border-radius: 0 9px 9px 0;overflow-y: auto;}.left_content dd{color: black !important;}'+
-                             '',
+                             '#good_box a:link{background-position: 0 !important;}',
                              // 初始化总侧边工具
                              init_widget:function()
                              {
@@ -457,7 +488,7 @@
                                  //右边的内容框
                                  this.initContent();
                                  //添加返回
-                                 $('<div>',{class:'left_art_box cmt_box back_box'}).html('<a href="/">喷水网</a>').appendTo('#left_art');
+                                 $('<div>',{class:'left_art_box back_box cmt_box'}).html('<a href="/">喷水网</a>').appendTo('#left_art');
                                  $('.left_art_box a').addClass('SidePic');
                                  //事件重新设置
                                  this.ReBindListener();
@@ -708,6 +739,7 @@
                                      var Original_Style=function()
                                      {
                                          if(!HomePage.isChange)return;
+                                         //$('.realtime_list .brief').show();
                                          $('.realtime').parent().find(':first').before($('.hotpush'));
                                          $('.main_content_left > section').show();
                                          $('.content_body .realtime').append($('.realtime_list'));
@@ -715,13 +747,19 @@
                                      //精简样式
                                      var New_Style=function(){
                                          HomePage.isChange=true;
+                                         Log('enter New');
+                                         Log($('.realtime_list'));
+                                         Log($('#allnews_all .items_area :first'));
                                          $('#allnews_all .items_area :first').before($('.realtime_list'));
                                          $('.realtime_list').before($('.hotpush'));
                                          $('.main_content_left > section').not(':last').hide();
+                                         $('.realtime_list .brief').remove();
                                      };
                                      // 修改样式
                                      var do_change=function()
                                      {
+                                         Log('enter do_change');
+                                         Log(HomePage.isOrig);
                                          if(HomePage.isOrig)
                                          {
                                              Original_Style();
@@ -733,6 +771,7 @@
                                               $('#Back a').attr('title','原始');
                                              }
                                      };
+                                     Log('enter homepage init');
                                      do_change();
                                      $('.allinfo .blue_bar').append($('.J_realtime').clone());
                                      var s='<span id="setting" class="fr listtop">设置</span>'+
@@ -766,7 +805,7 @@
                                  CB_share={
                                      // 分享,来自 自古CB出评论脚本
                                      //sina_url:'http://service.weibo.com/share/share.php?title={{title}}&url={%url%}&appkey=696316965',
-                                     CSS:'.genPic{margin-left:10px;cursor:pointer;color:#EB192D;}',
+                                     CSS:'.genPic{margin-left:10px;cursor:pointer;color:#EB192D;} .yellow_bar h4{display:inline} #changeTemp{display:block !important;}',
                                      templateO:'{%comment%} ——「{%title%} {%tag%}',
                                      template:GM_getValue('template','{%comment%} ——「{%title%}」 {%tag%}'),
                                      init:function()
@@ -841,6 +880,7 @@
                                                                });
                                                                return false;
                                                            });
+                                         if($('#changeTemp').length<1)
                                          $('.hotcomments header').append('<button class="fr" id="changeTemp">更改分享模板</button>');
                                          //参考 自古CB出评论 添加了官方的标签
                                          $('#changeTemp').click(function(){
@@ -871,38 +911,43 @@
          $('.adsbygoogle').remove();
          $('.bd_r').remove();
          $('#right4').remove();
+         $('iframe').remove();
          $('#job_box').hide().parents('.cber').find('header').append('(点击展开)').click(function(){$('#job_box').show()});
      }
      function init()
      {
          Log('enter init');
+         var MAINCSS='iframe{display:none !important;}.commt_list dl{min-height:0px !important;}';
+         Log(isRun()?'run':'not run');
          if(isRun())return;
+         Log('first run');
          window.setTimeout(RemoveAD,2000);
          var isMainPage=Article.notArt=isNaN(Article.id);
          //如果全局打开的
-         if(GM_getValue('global',true))
+        if(GM_getValue('global',true))
          {
-             MustAddStyle(picCSS+CB_comment.GETTER_STYlE+CB_Widget.Widget_CSS+HomePage.CSS+CB_share.CSS);
-             
+            // MustAddStyle(picCSS+CB_comment.GETTER_STYlE+CB_Widget.Widget_CSS+HomePage.CSS+CB_share.CSS+MAINCSS);
+             MustAddStyle(CB_comment.GETTER_STYlE+CB_share.CSS+MAINCSS);
              if(isMainPage)
              {
-                 CB_Widget.initHome();
-                 HomePage.init();
+             //    CB_Widget.initHome();
+            //     HomePage.init();
                  
                  return;
              }
-             CB_Widget.init();
-             $('#Back').remove();
-             $('.cb_box a[target="_blank"]').attr('target','');
+           //  CB_Widget.init();
+           //  $('#Back').remove();
+           //  $('.cb_box a[target="_blank"]').attr('target','');
              CB_comment.init_Comment();
              if(GM_getValue('share',true))//分享
                  CB_share.init();
          }
          else//否则只显示设置
          {
-             MustAddStyle(HomePage.CSS);
-             if(isMainPage)HomePage.setting();
+            // MustAddStyle(HomePage.CSS);
+           //  if(isMainPage)HomePage.setting();
          }
+         
      } 
      
      // 运行
@@ -911,6 +956,7 @@
      init();
      if(!uWin.$)uWin.$=$;
      window.setTimeout(init,1000);
+     window.setTimeout(RemoveAD,3000);
      function receiveMessage(msg)
      {
          if(msg.data=='show')
